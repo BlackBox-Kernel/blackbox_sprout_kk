@@ -15,17 +15,22 @@
 #include <linux/usb/quirks.h>
 #include "usb.h"
 
-/* List of quirky USB devices.  Please keep this list ordered by:
+/* Lists of quirky USB devices, split in device quirks and interface quirks.
+ * Device quirks are applied at the very beginning of the enumeration process,
+ * right after reading the device descriptor. They can thus only match on device
+ * information.
+ *
+ * Interface quirks are applied after reading all the configuration descriptors.
+ * They can match on both device and interface information.
+ *
+ * Note that the DELAY_INIT and HONOR_BNUMINTERFACES quirks do not make sense as
+ * interface quirks, as they only influence the enumeration process which is run
+ * before processing the interface quirks.
+ *
+ * Please keep the lists ordered by:
  * 	1) Vendor ID
  * 	2) Product ID
  * 	3) Class ID
- *
- * as we want specific devices to be overridden first, and only after that, any
- * class specific quirks.
- *
- * Right now the logic aborts if it finds a valid device in the table, we might
- * want to change that in the future if it turns out that a whole class of
- * devices is broken...
  */
 static const struct usb_device_id usb_quirk_list[] = {
 	/* CBM - Flash disk */
@@ -112,6 +117,9 @@ static const struct usb_device_id usb_quirk_list[] = {
 	/* Guillemot Webcam Hercules Dualpix Exchange*/
 	{ USB_DEVICE(0x06f8, 0x3005), .driver_info = USB_QUIRK_RESET_RESUME },
 
+	/* Midiman M-Audio Keystation 88es */
+	{ USB_DEVICE(0x0763, 0x0192), .driver_info = USB_QUIRK_RESET_RESUME },
+
 	/* M-Systems Flash Disk Pioneers */
 	{ USB_DEVICE(0x08ec, 0x1000), .driver_info = USB_QUIRK_RESET_RESUME },
 
@@ -124,6 +132,9 @@ static const struct usb_device_id usb_quirk_list[] = {
 
 	/* Broadcom BCM92035DGROM BT dongle */
 	{ USB_DEVICE(0x0a5c, 0x2021), .driver_info = USB_QUIRK_RESET_RESUME },
+
+	/* MAYA44USB sound device */
+	{ USB_DEVICE(0x0a92, 0x0091), .driver_info = USB_QUIRK_RESET_RESUME },
 
 	/* Action Semiconductor flash disk */
 	{ USB_DEVICE(0x10d6, 0x2200), .driver_info =
@@ -200,14 +211,10 @@ static u32 __usb_detect_quirks(struct usb_device *udev,
  */
 void usb_detect_quirks(struct usb_device *udev)
 {
-	const struct usb_device_id *id = usb_quirk_list;
-
-	id = find_id(udev);
-	if (id)
-		udev->quirks = (u32)(id->driver_info);
+	udev->quirks = __usb_detect_quirks(udev, usb_quirk_list);
 	if (udev->quirks)
 		dev_dbg(&udev->dev, "USB quirks for this device: %x\n",
-				udev->quirks);
+			udev->quirks);
 
 	/* For the present, all devices default to USB-PERSIST enabled */
 #if 0		/* was: #ifdef CONFIG_PM */
@@ -223,4 +230,17 @@ void usb_detect_quirks(struct usb_device *udev)
 	if (!(udev->quirks & USB_QUIRK_RESET_MORPHS))
 		udev->persist_enabled = 1;
 #endif	/* CONFIG_PM */
+}
+
+void usb_detect_interface_quirks(struct usb_device *udev)
+{
+	u32 quirks;
+
+	quirks = __usb_detect_quirks(udev, usb_interface_quirk_list);
+	if (quirks == 0)
+		return;
+
+	dev_dbg(&udev->dev, "USB interface quirks for this device: %x\n",
+		quirks);
+	udev->quirks |= quirks;
 }

@@ -55,6 +55,7 @@
 #include <asm/paravirt.h>
 #include <asm/ftrace.h>
 #include <asm/percpu.h>
+#include <asm/pgtable_types.h>
 #include <linux/err.h>
 
 /* Avoid __ASSEMBLER__'ifying <linux/audit.h> just for this.  */
@@ -1412,7 +1413,7 @@ ENTRY(xen_failsafe_callback)
 	CFI_RESTORE r11
 	addq $0x30,%rsp
 	CFI_ADJUST_CFA_OFFSET -0x30
-	pushq_cfi $0
+	pushq_cfi $-1 /* orig_ax = -1 => not a system call */
 	SAVE_ALL
 	jmp error_exit
 	CFI_ENDPROC
