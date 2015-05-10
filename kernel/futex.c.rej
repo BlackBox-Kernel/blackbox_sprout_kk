@@ -1,0 +1,116 @@
+--- kernel/futex.c
++++ kernel/futex.c
+@@ -60,7 +60,6 @@
+ #include <linux/pid.h>
+ #include <linux/nsproxy.h>
+ #include <linux/ptrace.h>
+-#include <linux/hugetlb.h>
+ 
+ #include <asm/futex.h>
+ 
+@@ -212,8 +211,6 @@
+ 	case FUT_OFF_MMSHARED:
+ 		mmdrop(key->private.mm);
+ 		break;
+-	default:
+-		smp_mb(); /* explicit MB (B) */
+ 	}
+ }
+ 
+@@ -486,14 +483,8 @@
+ 	return pi_state;
+ }
+ 
+-/*
+- * Must be called with the hb lock held.
+- */
+ static void free_pi_state(struct futex_pi_state *pi_state)
+ {
+-	if (!pi_state)
+-		return;
+-
+ 	if (!atomic_dec_and_test(&pi_state->refcount))
+ 		return;
+ 
+@@ -1285,6 +1154,15 @@
+ 	}
+ 
+ retry:
++	if (pi_state != NULL) {
++		/*
++		 * We will have to lookup the pi_state again, so free this one
++		 * to keep the accounting correct.
++		 */
++		free_pi_state(pi_state);
++		pi_state = NULL;
++	}
++
+ 	ret = get_futex_key(uaddr1, flags & FLAGS_SHARED, &key1, VERIFY_READ);
+ 	if (unlikely(ret != 0))
+ 		goto out;
+@@ -1338,33 +1207,22 @@
+ 		 * At this point the top_waiter has either taken uaddr2 or is
+ 		 * waiting on it.  If the former, then the pi_state will not
+ 		 * exist yet, look it up one more time to ensure we have a
+-		 * reference to it. If the lock was taken, ret contains the
+-		 * vpid of the top waiter task.
++		 * reference to it.
+ 		 */
+-		if (ret > 0) {
++		if (ret == 1) {
+ 			WARN_ON(pi_state);
+ 			drop_count++;
+ 			task_count++;
+-			/*
+-			 * If we acquired the lock, then the user
+-			 * space value of uaddr2 should be vpid. It
+-			 * cannot be changed by the top waiter as it
+-			 * is blocked on hb2 lock if it tries to do
+-			 * so. If something fiddled with it behind our
+-			 * back the pi state lookup might unearth
+-			 * it. So we rather use the known value than
+-			 * rereading and handing potential crap to
+-			 * lookup_pi_state.
+-			 */
+-			ret = lookup_pi_state(ret, hb2, &key2, &pi_state);
++			ret = get_futex_value_locked(&curval2, uaddr2);
++			if (!ret)
++				ret = lookup_pi_state(curval2, hb2, &key2,
++						      &pi_state);
+ 		}
+ 
+ 		switch (ret) {
+ 		case 0:
+ 			break;
+ 		case -EFAULT:
+-			free_pi_state(pi_state);
+-			pi_state = NULL;
+ 			double_unlock_hb(hb1, hb2);
+ 			put_futex_key(&key2);
+ 			put_futex_key(&key1);
+@@ -1374,8 +1232,6 @@
+ 			goto out;
+ 		case -EAGAIN:
+ 			/* The owner was exiting, try again. */
+-			free_pi_state(pi_state);
+-			pi_state = NULL;
+ 			double_unlock_hb(hb1, hb2);
+ 			put_futex_key(&key2);
+ 			put_futex_key(&key1);
+@@ -1448,7 +1300,6 @@
+ 	}
+ 
+ out_unlock:
+-	free_pi_state(pi_state);
+ 	double_unlock_hb(hb1, hb2);
+ 
+ 	/*
+@@ -1465,6 +1316,8 @@
+ out_put_key1:
+ 	put_futex_key(&key1);
+ out:
++	if (pi_state != NULL)
++		free_pi_state(pi_state);
+ 	return ret ? ret : task_count;
+ }
+ 

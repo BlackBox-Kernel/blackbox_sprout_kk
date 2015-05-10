@@ -1,0 +1,152 @@
+--- drivers/usb/class/cdc-acm.c
++++ drivers/usb/class/cdc-acm.c
+@@ -827,30 +762,15 @@
+ 	newline.bParityType = termios->c_cflag & PARENB ?
+ 				(termios->c_cflag & PARODD ? 1 : 2) +
+ 				(termios->c_cflag & CMSPAR ? 2 : 0) : 0;
+-	switch (termios->c_cflag & CSIZE) {
+-	case CS5:
+-		newline.bDataBits = 5;
+-		break;
+-	case CS6:
+-		newline.bDataBits = 6;
+-		break;
+-	case CS7:
+-		newline.bDataBits = 7;
+-		break;
+-	case CS8:
+-	default:
+-		newline.bDataBits = 8;
+-		break;
+-	}
++	newline.bDataBits = acm_tty_size[(termios->c_cflag & CSIZE) >> 4];
+ 	/* FIXME: Needs to clear unsupported bits in the termios */
+ 	acm->clocal = ((termios->c_cflag & CLOCAL) != 0);
+ 
+-	if (C_BAUD(tty) == B0) {
++	if (!newline.dwDTERate) {
+ 		newline.dwDTERate = acm->line.dwDTERate;
+ 		newctrl &= ~ACM_CTRL_DTR;
+-	} else if (termios_old && (termios_old->c_cflag & CBAUD) == B0) {
++	} else
+ 		newctrl |=  ACM_CTRL_DTR;
+-	}
+ 
+ 	if (newctrl != acm->ctrlout)
+ 		acm_set_control(acm, acm->ctrlout = newctrl);
+@@ -1043,11 +963,10 @@
+ 	} else {
+ 		control_interface = usb_ifnum_to_if(usb_dev, union_header->bMasterInterface0);
+ 		data_interface = usb_ifnum_to_if(usb_dev, (data_interface_num = union_header->bSlaveInterface0));
+-	}
+-
+-	if (!control_interface || !data_interface) {
+-		dev_dbg(&intf->dev, "no interfaces\n");
+-		return -ENODEV;
++		if (!control_interface || !data_interface) {
++			dev_dbg(&intf->dev, "no interfaces\n");
++			return -ENODEV;
++		}
+ 	}
+ 
+ 	if (data_interface_num != call_interface_num)
+@@ -1112,8 +1031,7 @@
+ 	}
+ 
+ 
+-	if (data_interface->cur_altsetting->desc.bNumEndpoints < 2 ||
+-	    control_interface->cur_altsetting->desc.bNumEndpoints == 0)
++	if (data_interface->cur_altsetting->desc.bNumEndpoints < 2)
+ 		return -EINVAL;
+ 
+ 	epctrl = &control_interface->cur_altsetting->endpoint[0].desc;
+@@ -1364,7 +1281,6 @@
+ 				&dev_attr_wCountryCodes);
+ 		device_remove_file(&acm->control->dev,
+ 				&dev_attr_iCountryCodeRelDate);
+-		kfree(acm->country_codes);
+ 	}
+ 	device_remove_file(&acm->control->dev, &dev_attr_bmCapabilities);
+ 	usb_set_intfdata(acm->control, NULL);
+@@ -1429,24 +1347,29 @@
+ static int acm_resume(struct usb_interface *intf)
+ {
+ 	struct acm *acm = usb_get_intfdata(intf);
+-	struct urb *urb;
++	struct acm_wb *wb;
+ 	int rv = 0;
++	int cnt;
+ 
+ 	spin_lock_irq(&acm->read_lock);
+-	spin_lock(&acm->write_lock);
++	acm->susp_count -= 1;
++	cnt = acm->susp_count;
++	spin_unlock_irq(&acm->read_lock);
+ 
+-	if (--acm->susp_count)
+-		goto out;
++	if (cnt)
++		return 0;
+ 
+ 	if (test_bit(ASYNCB_INITIALIZED, &acm->port.flags)) {
+-		rv = usb_submit_urb(acm->ctrlurb, GFP_ATOMIC);
+-
+-		for (;;) {
+-			urb = usb_get_from_anchor(&acm->delayed);
+-			if (!urb)
+-				break;
+-
+-			acm_start_wb(acm, urb->context);
++		rv = usb_submit_urb(acm->ctrlurb, GFP_NOIO);
++
++		spin_lock_irq(&acm->write_lock);
++		if (acm->delayed_wb) {
++			wb = acm->delayed_wb;
++			acm->delayed_wb = NULL;
++			spin_unlock_irq(&acm->write_lock);
++			acm_start_wb(acm, wb);
++		} else {
++			spin_unlock_irq(&acm->write_lock);
+ 		}
+ 
+ 		/*
+@@ -1536,32 +1455,17 @@
+ 	{ USB_DEVICE(0x0572, 0x1328), /* Shiro / Aztech USB MODEM UM-3100 */
+ 	.driver_info = NO_UNION_NORMAL, /* has no union descriptor */
+ 	},
+-	{ USB_DEVICE(0x2184, 0x001c) },	/* GW Instek AFG-2225 */
+ 	{ USB_DEVICE(0x22b8, 0x6425), /* Motorola MOTOMAGX phones */
+ 	},
+ 	/* Motorola H24 HSPA module: */
+ 	{ USB_DEVICE(0x22b8, 0x2d91) }, /* modem                                */
+-	{ USB_DEVICE(0x22b8, 0x2d92),   /* modem           + diagnostics        */
+-	.driver_info = NO_UNION_NORMAL, /* handle only modem interface          */
+-	},
+-	{ USB_DEVICE(0x22b8, 0x2d93),   /* modem + AT port                      */
+-	.driver_info = NO_UNION_NORMAL, /* handle only modem interface          */
+-	},
+-	{ USB_DEVICE(0x22b8, 0x2d95),   /* modem + AT port + diagnostics        */
+-	.driver_info = NO_UNION_NORMAL, /* handle only modem interface          */
+-	},
+-	{ USB_DEVICE(0x22b8, 0x2d96),   /* modem                         + NMEA */
+-	.driver_info = NO_UNION_NORMAL, /* handle only modem interface          */
+-	},
+-	{ USB_DEVICE(0x22b8, 0x2d97),   /* modem           + diagnostics + NMEA */
+-	.driver_info = NO_UNION_NORMAL, /* handle only modem interface          */
+-	},
+-	{ USB_DEVICE(0x22b8, 0x2d99),   /* modem + AT port               + NMEA */
+-	.driver_info = NO_UNION_NORMAL, /* handle only modem interface          */
+-	},
+-	{ USB_DEVICE(0x22b8, 0x2d9a),   /* modem + AT port + diagnostics + NMEA */
+-	.driver_info = NO_UNION_NORMAL, /* handle only modem interface          */
+-	},
++	{ USB_DEVICE(0x22b8, 0x2d92) }, /* modem           + diagnostics        */
++	{ USB_DEVICE(0x22b8, 0x2d93) }, /* modem + AT port                      */
++	{ USB_DEVICE(0x22b8, 0x2d95) }, /* modem + AT port + diagnostics        */
++	{ USB_DEVICE(0x22b8, 0x2d96) }, /* modem                         + NMEA */
++	{ USB_DEVICE(0x22b8, 0x2d97) }, /* modem           + diagnostics + NMEA */
++	{ USB_DEVICE(0x22b8, 0x2d99) }, /* modem + AT port               + NMEA */
++	{ USB_DEVICE(0x22b8, 0x2d9a) }, /* modem + AT port + diagnostics + NMEA */
+ 
+ 	{ USB_DEVICE(0x0572, 0x1329), /* Hummingbird huc56s (Conexant) */
+ 	.driver_info = NO_UNION_NORMAL, /* union descriptor misplaced on

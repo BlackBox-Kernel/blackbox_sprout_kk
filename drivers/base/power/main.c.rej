@@ -1,0 +1,20 @@
+--- drivers/base/power/main.c
++++ drivers/base/power/main.c
+@@ -1030,7 +1022,7 @@
+ 	if (pm_wakeup_pending()) {
+ 		pm_runtime_put_sync(dev);
+ 		async_error = -EBUSY;
+-		goto Complete;
++		return 0;
+ 	}
+ 
+ 	device_lock(dev);
+@@ -1087,8 +1079,6 @@
+ 	}
+ 
+ 	device_unlock(dev);
+-
+- Complete:
+ 	complete_all(&dev->power.completion);
+ 
+ 	if (error) {

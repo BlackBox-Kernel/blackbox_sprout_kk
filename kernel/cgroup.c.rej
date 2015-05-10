@@ -1,0 +1,41 @@
+--- kernel/cgroup.c
++++ kernel/cgroup.c
+@@ -378,20 +378,12 @@
+ 		struct cgroup *cgrp = link->cgrp;
+ 		list_del(&link->cg_link_list);
+ 		list_del(&link->cgrp_link_list);
+-
+-		/*
+-		 * We may not be holding cgroup_mutex, and if cgrp->count is
+-		 * dropped to 0 the cgroup can be destroyed at any time, hence
+-		 * rcu_read_lock is used to keep it alive.
+-		 */
+-		rcu_read_lock();
+ 		if (atomic_dec_and_test(&cgrp->count) &&
+ 		    notify_on_release(cgrp)) {
+ 			if (taskexit)
+ 				set_bit(CGRP_RELEASABLE, &cgrp->flags);
+ 			check_for_release(cgrp);
+ 		}
+-		rcu_read_unlock();
+ 
+ 		kfree(link);
+ 	}
+@@ -898,7 +890,7 @@
+ 	spin_lock(&dentry->d_lock);
+ 	node = dentry->d_subdirs.next;
+ 	while (node != &dentry->d_subdirs) {
+-		struct dentry *d = list_entry(node, struct dentry, d_child);
++		struct dentry *d = list_entry(node, struct dentry, d_u.d_child);
+ 
+ 		spin_lock_nested(&d->d_lock, DENTRY_D_LOCK_NESTED);
+ 		list_del_init(node);
+@@ -932,7 +924,7 @@
+ 	parent = dentry->d_parent;
+ 	spin_lock(&parent->d_lock);
+ 	spin_lock_nested(&dentry->d_lock, DENTRY_D_LOCK_NESTED);
+-	list_del_init(&dentry->d_child);
++	list_del_init(&dentry->d_u.d_child);
+ 	spin_unlock(&dentry->d_lock);
+ 	spin_unlock(&parent->d_lock);
+ 	remove_dir(dentry);

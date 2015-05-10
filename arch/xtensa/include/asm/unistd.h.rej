@@ -1,0 +1,12 @@
+--- arch/xtensa/include/asm/unistd.h
++++ arch/xtensa/include/asm/unistd.h
+@@ -394,8 +394,7 @@
+ #define __NR_pivot_root 			175
+ __SYSCALL(175, sys_pivot_root, 2)
+ #define __NR_umount 				176
+-__SYSCALL(176, sys_oldumount, 1)
+-#define __ARCH_WANT_SYS_OLDUMOUNT
++__SYSCALL(176, sys_umount, 2)
+ #define __NR_swapoff 				177
+ __SYSCALL(177, sys_swapoff, 1)
+ #define __NR_sync 				178

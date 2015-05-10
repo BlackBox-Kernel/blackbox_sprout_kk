@@ -1,0 +1,10 @@
+--- drivers/net/can/usb/esd_usb2.c
++++ drivers/net/can/usb/esd_usb2.c
+@@ -1094,7 +1094,6 @@
+ 			}
+ 		}
+ 		unlink_all_urbs(dev);
+-		kfree(dev);
+ 	}
+ }
+ 

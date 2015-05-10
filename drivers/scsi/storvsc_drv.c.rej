@@ -1,0 +1,19 @@
+--- drivers/scsi/storvsc_drv.c
++++ drivers/scsi/storvsc_drv.c
+@@ -1350,12 +1341,13 @@
+ 	if (ret == -EAGAIN) {
+ 		/* no more space */
+ 
+-		if (cmd_request->bounce_sgl_count)
++		if (cmd_request->bounce_sgl_count) {
+ 			destroy_bounce_buffer(cmd_request->bounce_sgl,
+ 					cmd_request->bounce_sgl_count);
+ 
+-		ret = SCSI_MLQUEUE_DEVICE_BUSY;
+-		goto queue_error;
++			ret = SCSI_MLQUEUE_DEVICE_BUSY;
++			goto queue_error;
++		}
+ 	}
+ 
+ 	return 0;

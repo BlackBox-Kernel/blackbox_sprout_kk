@@ -684,9 +684,6 @@ static int tracepoint_module_going(struct module *mod)
 {
 	struct tp_module *pos;
 
-	if (!mod->num_tracepoints)
-		return 0;
-
 	mutex_lock(&tracepoints_mutex);
 	tracepoint_update_probe_range(mod->tracepoints_ptrs,
 		mod->tracepoints_ptrs + mod->num_tracepoints);

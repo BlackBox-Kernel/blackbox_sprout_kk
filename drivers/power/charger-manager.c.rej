@@ -1,0 +1,14 @@
+--- drivers/power/charger-manager.c
++++ drivers/power/charger-manager.c
+@@ -808,11 +808,6 @@
+ 		goto err_no_charger_stat;
+ 	}
+ 
+-	if (!desc->psy_fuel_gauge) {
+-		dev_err(&pdev->dev, "No fuel gauge power supply defined\n");
+-		return -EINVAL;
+-	}
+-
+ 	/* Counting index only */
+ 	while (desc->psy_charger_stat[i])
+ 		i++;

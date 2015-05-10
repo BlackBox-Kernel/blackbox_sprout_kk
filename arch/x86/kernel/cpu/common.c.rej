@@ -1,0 +1,11 @@
+--- arch/x86/kernel/cpu/common.c
++++ arch/x86/kernel/cpu/common.c
+@@ -142,8 +142,6 @@
+ 
+ static int __init x86_xsave_setup(char *s)
+ {
+-	if (strlen(s))
+-		return 0;
+ 	setup_clear_cpu_cap(X86_FEATURE_XSAVE);
+ 	setup_clear_cpu_cap(X86_FEATURE_XSAVEOPT);
+ 	return 1;

@@ -1,0 +1,26 @@
+--- net/ipv6/route.c
++++ net/ipv6/route.c
+@@ -617,11 +617,8 @@
+ 		prefix = &prefix_buf;
+ 	}
+ 
+-	if (rinfo->prefix_len == 0)
+-		rt = rt6_get_dflt_router(gwaddr, dev);
+-	else
+-		rt = rt6_get_route_info(net, prefix, rinfo->prefix_len,
+-					gwaddr, dev->ifindex);
++	rt = rt6_get_route_info(net, prefix, rinfo->prefix_len, gwaddr,
++				dev->ifindex);
+ 
+ 	if (rt && !lifetime) {
+ 		ip6_del_rt(rt);
+@@ -1974,8 +1962,7 @@
+ restart:
+ 	read_lock_bh(&table->tb6_lock);
+ 	for (rt = table->tb6_root.leaf; rt; rt = rt->dst.rt6_next) {
+-		if (rt->rt6i_flags & (RTF_DEFAULT | RTF_ADDRCONF) &&
+-		    (!rt->rt6i_idev || rt->rt6i_idev->cnf.accept_ra != 2)) {
++		if (rt->rt6i_flags & (RTF_DEFAULT | RTF_ADDRCONF)) {
+ 			dst_hold(&rt->dst);
+ 			read_unlock_bh(&table->tb6_lock);
+ 			ip6_del_rt(rt);

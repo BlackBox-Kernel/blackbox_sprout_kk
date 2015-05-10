@@ -1,0 +1,11 @@
+--- fs/exportfs/expfs.c
++++ fs/exportfs/expfs.c
+@@ -50,7 +50,7 @@
+ 
+ 	inode = result->d_inode;
+ 	spin_lock(&inode->i_lock);
+-	list_for_each_entry(dentry, &inode->i_dentry, d_u.d_alias) {
++	list_for_each_entry(dentry, &inode->i_dentry, d_alias) {
+ 		dget(dentry);
+ 		spin_unlock(&inode->i_lock);
+ 		if (toput)

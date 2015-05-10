@@ -1,0 +1,98 @@
+--- mm/mmap.c
++++ mm/mmap.c
+@@ -538,12 +509,9 @@
+ 		 * shrinking vma had, to cover any anon pages imported.
+ 		 */
+ 		if (exporter && exporter->anon_vma && !importer->anon_vma) {
+-			int error;
+-
++			if (anon_vma_clone(importer, exporter))
++				return -ENOMEM;
+ 			importer->anon_vma = exporter->anon_vma;
+-			error = anon_vma_clone(importer, exporter);
+-			if (error)
+-				return error;
+ 		}
+ 	}
+ 
+@@ -800,7 +768,7 @@
+ 				end, prev->vm_pgoff, NULL);
+ 		if (err)
+ 			return NULL;
+-		khugepaged_enter_vma_merge(prev, vm_flags);
++		khugepaged_enter_vma_merge(prev);
+ 		return prev;
+ 	}
+ 
+@@ -819,7 +787,7 @@
+ 				next->vm_pgoff - pglen, NULL);
+ 		if (err)
+ 			return NULL;
+-		khugepaged_enter_vma_merge(area, vm_flags);
++		khugepaged_enter_vma_merge(area);
+ 		return area;
+ 	}
+ 
+@@ -1684,17 +1635,14 @@
+ {
+ 	struct mm_struct *mm = vma->vm_mm;
+ 	struct rlimit *rlim = current->signal->rlim;
+-	unsigned long new_start, actual_size;
++	unsigned long new_start;
+ 
+ 	/* address space limit tests */
+ 	if (!may_expand_vm(mm, grow))
+ 		return -ENOMEM;
+ 
+ 	/* Stack limit test */
+-	actual_size = size;
+-	if (size && (vma->vm_flags & (VM_GROWSUP | VM_GROWSDOWN)))
+-		actual_size -= PAGE_SIZE;
+-	if (actual_size > ACCESS_ONCE(rlim[RLIMIT_STACK].rlim_cur))
++	if (size > ACCESS_ONCE(rlim[RLIMIT_STACK].rlim_cur))
+ 		return -ENOMEM;
+ 
+ 	/* mlock limit tests */
+@@ -1780,7 +1728,7 @@
+ 		}
+ 	}
+ 	vma_unlock_anon_vma(vma);
+-	khugepaged_enter_vma_merge(vma, vma->vm_flags);
++	khugepaged_enter_vma_merge(vma);
+ 	return error;
+ }
+ #endif /* CONFIG_STACK_GROWSUP || CONFIG_IA64 */
+@@ -1831,32 +1779,13 @@
+ 		}
+ 	}
+ 	vma_unlock_anon_vma(vma);
+-	khugepaged_enter_vma_merge(vma, vma->vm_flags);
++	khugepaged_enter_vma_merge(vma);
+ 	return error;
+ }
+ 
+-/*
+- * Note how expand_stack() refuses to expand the stack all the way to
+- * abut the next virtual mapping, *unless* that mapping itself is also
+- * a stack mapping. We want to leave room for a guard page, after all
+- * (the guard page itself is not added here, that is done by the
+- * actual page faulting logic)
+- *
+- * This matches the behavior of the guard page logic (see mm/memory.c:
+- * check_stack_guard_page()), which only allows the guard page to be
+- * removed under these circumstances.
+- */
+ #ifdef CONFIG_STACK_GROWSUP
+ int expand_stack(struct vm_area_struct *vma, unsigned long address)
+ {
+-	struct vm_area_struct *next;
+-
+-	address &= PAGE_MASK;
+-	next = vma->vm_next;
+-	if (next && next->vm_start == address + PAGE_SIZE) {
+-		if (!(next->vm_flags & VM_GROWSUP))
+-			return -ENOMEM;
+-	}
+ 	return expand_upwards(vma, address);
+ }
+ 

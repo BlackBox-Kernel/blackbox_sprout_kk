@@ -1,0 +1,15 @@
+--- net/bluetooth/smp.c
++++ net/bluetooth/smp.c
+@@ -323,11 +321,8 @@
+ 	}
+ 
+ 	/* Not Just Works/Confirm results in MITM Authentication */
+-	if (method != JUST_CFM) {
++	if (method != JUST_CFM)
+ 		set_bit(SMP_FLAG_MITM_AUTH, &smp->smp_flags);
+-		if (hcon->pending_sec_level < BT_SECURITY_HIGH)
+-			hcon->pending_sec_level = BT_SECURITY_HIGH;
+-	}
+ 
+ 	/* If both devices have Keyoard-Display I/O, the master
+ 	 * Confirms and the slave Enters the passkey.

@@ -1,0 +1,30 @@
+--- drivers/usb/dwc3/ep0.c
++++ drivers/usb/dwc3/ep0.c
+@@ -209,7 +209,7 @@
+ 	struct dwc3_ep		*dep = dwc->eps[0];
+ 
+ 	/* stall is always issued on EP0 */
+-	__dwc3_gadget_ep_set_halt(dep, 1, false);
++	__dwc3_gadget_ep_set_halt(dep, 1);
+ 	dep->flags = DWC3_EP_ENABLED;
+ 	dwc->delayed_status = false;
+ 
+@@ -380,9 +380,7 @@
+ 			dep = dwc3_wIndex_to_dep(dwc, wIndex);
+ 			if (!dep)
+ 				return -EINVAL;
+-			if (set == 0 && (dep->flags & DWC3_EP_WEDGE))
+-				break;
+-			ret = __dwc3_gadget_ep_set_halt(dep, set, true);
++			ret = __dwc3_gadget_ep_set_halt(dep, set);
+ 			if (ret)
+ 				return -EINVAL;
+ 			break;
+@@ -571,6 +569,7 @@
+ 		transferred = min_t(u32, ur->length,
+ 				transfer_size - length);
+ 		memcpy(ur->buf, dwc->ep0_bounce, transferred);
++		dwc->ep0_bounced = false;
+ 	} else {
+ 		transferred = ur->length - length;
+ 	}

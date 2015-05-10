@@ -1,0 +1,12 @@
+--- drivers/base/firmware_class.c
++++ drivers/base/firmware_class.c
+@@ -588,9 +588,6 @@
+ 	struct firmware_priv *fw_priv;
+ 	int ret;
+ 
+-	if (!name || name[0] == '\0')
+-		return -EINVAL;
+-
+ 	fw_priv = _request_firmware_prepare(firmware_p, name, device, true,
+ 					    false);
+ 	if (IS_ERR_OR_NULL(fw_priv))

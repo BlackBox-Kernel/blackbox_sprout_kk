@@ -1,0 +1,71 @@
+--- net/wireless/nl80211.c
++++ net/wireless/nl80211.c
+@@ -1868,9 +1868,6 @@
+ 	if (!rdev->ops->get_key)
+ 		return -EOPNOTSUPP;
+ 
+-	if (!pairwise && mac_addr && !(rdev->wiphy.flags & WIPHY_FLAG_IBSS_RSN))
+-		return -ENOENT;
+-
+ 	msg = nlmsg_new(NLMSG_DEFAULT_SIZE, GFP_KERNEL);
+ 	if (!msg)
+ 		return -ENOMEM;
+@@ -1888,6 +1885,10 @@
+ 	if (mac_addr)
+ 		NLA_PUT(msg, NL80211_ATTR_MAC, ETH_ALEN, mac_addr);
+ 
++	if (pairwise && mac_addr &&
++	    !(rdev->wiphy.flags & WIPHY_FLAG_IBSS_RSN))
++		return -ENOENT;
++
+ 	err = rdev->ops->get_key(&rdev->wiphy, dev, key_idx, pairwise,
+ 				 mac_addr, &cookie, get_key_callback);
+ 
+@@ -2059,7 +2060,7 @@
+ 	wdev_lock(dev->ieee80211_ptr);
+ 	err = nl80211_key_allowed(dev->ieee80211_ptr);
+ 
+-	if (key.type == NL80211_KEYTYPE_GROUP && mac_addr &&
++	if (key.type == NL80211_KEYTYPE_PAIRWISE && mac_addr &&
+ 	    !(rdev->wiphy.flags & WIPHY_FLAG_IBSS_RSN))
+ 		err = -ENOENT;
+ 
+@@ -5058,9 +5059,6 @@
+ 	void *hdr = ((void **)skb->cb)[1];
+ 	struct nlattr *data = ((void **)skb->cb)[2];
+ 
+-	/* clear CB data for netlink core to own from now on */
+-	memset(skb->cb, 0, sizeof(skb->cb));
+-
+ 	if (WARN_ON(!rdev->testmode_info)) {
+ 		kfree_skb(skb);
+ 		return -EINVAL;
+@@ -5083,17 +5081,12 @@
+ 
+ void cfg80211_testmode_event(struct sk_buff *skb, gfp_t gfp)
+ {
+-	struct cfg80211_registered_device *rdev = ((void **)skb->cb)[0];
+ 	void *hdr = ((void **)skb->cb)[1];
+ 	struct nlattr *data = ((void **)skb->cb)[2];
+ 
+-	/* clear CB data for netlink core to own from now on */
+-	memset(skb->cb, 0, sizeof(skb->cb));
+-
+ 	nla_nest_end(skb, data);
+ 	genlmsg_end(skb, hdr);
+-	genlmsg_multicast_netns(wiphy_net(&rdev->wiphy), skb, 0,
+-				nl80211_testmode_mcgrp.id, gfp);
++	genlmsg_multicast(skb, 0, nl80211_testmode_mcgrp.id, gfp);
+ }
+ EXPORT_SYMBOL(cfg80211_testmode_event);
+ #endif
+@@ -7775,8 +7768,7 @@
+ 
+ 	genlmsg_end(msg, hdr);
+ 
+-	genlmsg_multicast_netns(wiphy_net(&rdev->wiphy), msg, 0,
+-				nl80211_mlme_mcgrp.id, gfp);
++	genlmsg_multicast(msg, 0, nl80211_mlme_mcgrp.id, gfp);
+ 	return;
+ 
+  nla_put_failure:

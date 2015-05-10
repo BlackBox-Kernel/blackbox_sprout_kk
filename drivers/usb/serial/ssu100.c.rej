@@ -1,0 +1,29 @@
+--- drivers/usb/serial/ssu100.c
++++ drivers/usb/serial/ssu100.c
+@@ -599,10 +600,10 @@
+ 			if (*tty_flag == TTY_NORMAL)
+ 				*tty_flag = TTY_FRAME;
+ 		}
+-		if (lsr & UART_LSR_OE) {
++		if (lsr & UART_LSR_OE){
+ 			priv->icount.overrun++;
+-			tty_insert_flip_char(tty_port_tty_get(&port->port),
+-					0, TTY_OVERRUN);
++			if (*tty_flag == TTY_NORMAL)
++				*tty_flag = TTY_OVERRUN;
+ 		}
+ 	}
+ 
+@@ -623,8 +624,11 @@
+ 	if ((len >= 4) &&
+ 	    (packet[0] == 0x1b) && (packet[1] == 0x1b) &&
+ 	    ((packet[2] == 0x00) || (packet[2] == 0x01))) {
+-		if (packet[2] == 0x00)
++		if (packet[2] == 0x00) {
+ 			ssu100_update_lsr(port, packet[3], &flag);
++			if (flag == TTY_OVERRUN)
++				tty_insert_flip_char(tty, 0, TTY_OVERRUN);
++		}
+ 		if (packet[2] == 0x01)
+ 			ssu100_update_msr(port, packet[3]);
+ 

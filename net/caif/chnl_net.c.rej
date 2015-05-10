@@ -1,0 +1,10 @@
+--- net/caif/chnl_net.c
++++ net/caif/chnl_net.c
+@@ -467,6 +467,7 @@
+ 	ASSERT_RTNL();
+ 	caifdev = netdev_priv(dev);
+ 	caif_netlink_parms(data, &caifdev->conn_req);
++	dev_net_set(caifdev->netdev, src_net);
+ 
+ 	ret = register_netdevice(dev);
+ 	if (ret)

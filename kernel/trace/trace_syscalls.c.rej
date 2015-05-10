@@ -1,0 +1,46 @@
+--- kernel/trace/trace_syscalls.c
++++ kernel/trace/trace_syscalls.c
+@@ -305,11 +305,9 @@
+ 	struct ring_buffer *buffer;
+ 	int size;
+ 	int syscall_nr;
+-	unsigned long irq_flags;
+-	int pc;
+ 
+ 	syscall_nr = syscall_get_nr(current, regs);
+-	if (syscall_nr < 0 || syscall_nr >= NR_syscalls)
++	if (syscall_nr < 0)
+ 		return;
+ 	if (!test_bit(syscall_nr, enabled_enter_syscalls))
+ 		return;
+@@ -341,11 +335,9 @@
+ 	struct ring_buffer_event *event;
+ 	struct ring_buffer *buffer;
+ 	int syscall_nr;
+-	unsigned long irq_flags;
+-	int pc;
+ 
+ 	syscall_nr = syscall_get_nr(current, regs);
+-	if (syscall_nr < 0 || syscall_nr >= NR_syscalls)
++	if (syscall_nr < 0)
+ 		return;
+ 	if (!test_bit(syscall_nr, enabled_exit_syscalls))
+ 		return;
+@@ -510,8 +497,6 @@
+ 	int size;
+ 
+ 	syscall_nr = syscall_get_nr(current, regs);
+-	if (syscall_nr < 0 || syscall_nr >= NR_syscalls)
+-		return;
+ 	if (!test_bit(syscall_nr, enabled_perf_enter_syscalls))
+ 		return;
+ 
+@@ -586,8 +571,6 @@
+ 	int size;
+ 
+ 	syscall_nr = syscall_get_nr(current, regs);
+-	if (syscall_nr < 0 || syscall_nr >= NR_syscalls)
+-		return;
+ 	if (!test_bit(syscall_nr, enabled_perf_exit_syscalls))
+ 		return;
+ 

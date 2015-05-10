@@ -1,0 +1,14 @@
+--- drivers/scsi/scsi_error.c
++++ drivers/scsi/scsi_error.c
+@@ -1660,10 +1641,8 @@
+ 	 * is no point trying to lock the door of an off-line device.
+ 	 */
+ 	shost_for_each_device(sdev, shost) {
+-		if (scsi_device_online(sdev) && sdev->was_reset && sdev->locked) {
++		if (scsi_device_online(sdev) && sdev->locked)
+ 			scsi_eh_lock_door(sdev);
+-			sdev->was_reset = 0;
+-		}
+ 	}
+ 
+ 	/*

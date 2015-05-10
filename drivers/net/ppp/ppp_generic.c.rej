@@ -1,0 +1,11 @@
+--- drivers/net/ppp/ppp_generic.c
++++ drivers/net/ppp/ppp_generic.c
+@@ -588,7 +588,7 @@
+ 			if (file == ppp->owner)
+ 				ppp_shutdown_interface(ppp);
+ 		}
+-		if (atomic_long_read(&file->f_count) < 2) {
++		if (atomic_long_read(&file->f_count) <= 2) {
+ 			ppp_release(NULL, file);
+ 			err = 0;
+ 		} else

@@ -1,0 +1,11 @@
+--- fs/9p/vfs_inode_dotl.c
++++ fs/9p/vfs_inode_dotl.c
+@@ -81,7 +81,7 @@
+ 	spin_lock(&inode->i_lock);
+ 	/* Directory should have only one entry. */
+ 	BUG_ON(S_ISDIR(inode->i_mode) && !list_is_singular(&inode->i_dentry));
+-	dentry = list_entry(inode->i_dentry.next, struct dentry, d_u.d_alias);
++	dentry = list_entry(inode->i_dentry.next, struct dentry, d_alias);
+ 	spin_unlock(&inode->i_lock);
+ 	return dentry;
+ }

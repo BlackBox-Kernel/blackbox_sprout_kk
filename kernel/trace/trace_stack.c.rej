@@ -1,0 +1,40 @@
+--- kernel/trace/trace_stack.c
++++ kernel/trace/trace_stack.c
+@@ -40,34 +29,25 @@
+ int stack_tracer_enabled;
+ static int last_stack_tracer_enabled;
+ 
+-static inline void
+-check_stack(unsigned long ip, unsigned long *stack)
++static inline void check_stack(void)
+ {
+ 	unsigned long this_size, flags;
+ 	unsigned long *p, *top, *start;
+-	static int tracer_frame;
+-	int frame_size = ACCESS_ONCE(tracer_frame);
+ 	int i;
+ 
+-	this_size = ((unsigned long)stack) & (THREAD_SIZE-1);
++	this_size = ((unsigned long)&this_size) & (THREAD_SIZE-1);
+ 	this_size = THREAD_SIZE - this_size;
+-	/* Remove the frame of the tracer */
+-	this_size -= frame_size;
+ 
+ 	if (this_size <= max_stack_size)
+ 		return;
+ 
+ 	/* we do not handle interrupt stacks yet */
+-	if (!object_is_on_stack(stack))
++	if (!object_is_on_stack(&this_size))
+ 		return;
+ 
+ 	local_irq_save(flags);
+ 	arch_spin_lock(&max_stack_lock);
+ 
+-	/* In case another CPU set the tracer_frame on us */
+-	if (unlikely(!frame_size))
+-		this_size -= tracer_frame;
+-
+ 	/* a race could have already updated it */
+ 	if (this_size <= max_stack_size)
+ 		goto out;

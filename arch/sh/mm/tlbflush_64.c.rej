@@ -1,0 +1,11 @@
+--- arch/sh/mm/tlbflush_64.c
++++ arch/sh/mm/tlbflush_64.c
+@@ -194,8 +194,6 @@
+ 			goto out_of_memory;
+ 		else if (fault & VM_FAULT_SIGBUS)
+ 			goto do_sigbus;
+-		else if (fault & VM_FAULT_SIGSEGV)
+-			goto bad_area;
+ 		BUG();
+ 	}
+ 

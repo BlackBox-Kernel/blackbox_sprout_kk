@@ -1,0 +1,11 @@
+--- sound/core/pcm_native.c
++++ sound/core/pcm_native.c
+@@ -3148,7 +3125,7 @@
+ 
+ #ifndef ARCH_HAS_DMA_MMAP_COHERENT
+ /* This should be defined / handled globally! */
+-#if defined(CONFIG_ARM) || defined(CONFIG_ARM64)
++#ifdef CONFIG_ARM
+ #define ARCH_HAS_DMA_MMAP_COHERENT
+ #endif
+ #endif
