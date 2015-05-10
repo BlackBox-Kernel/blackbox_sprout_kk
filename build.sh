@@ -27,19 +27,16 @@ yellow='\033[0;33m'
 red='\033[0;31m'
 nocol='\033[0m'
 # Modify the following variable if you want to build
-export CROSS_COMPILE="/root/cm11/prebuilts/gcc/linux-x86/arm/arm-eabi-4.7/bin/arm-eabi-"
 export ARCH=arm
 export SUBARCH=arm
-export KBUILD_BUILD_USER="varun.chitre15"
-export KBUILD_BUILD_HOST="Monster-Machine"
 
 compile_kernel ()
 {
 echo -e "$blue***********************************************"
-echo "          Compiling ThunderZap kernel          "
+echo "          Compiling BlackBox          "
 echo -e "***********************************************$nocol"
 make sprout_defconfig
-make -j32
+make
 if ! [ -a $ZIMAGE ];
 then
 echo -e "$red Kernel Compilation failed! Fix the errors! $nocol"
