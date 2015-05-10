@@ -1,19 +1,3 @@
- #
- # Copyright © 2014, Varun Chitre "varun.chitre15" <varun.chitre15@gmail.com>
- #
- # Custom build script
- #
- # This software is licensed under the terms of the GNU General Public
- # License version 2, as published by the Free Software Foundation, and
- # may be copied, distributed, and modified under those terms.
- #
- # This program is distributed in the hope that it will be useful,
- # but WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- # GNU General Public License for more details.
- #
- # Please maintain this if you use this script or any part of it
- #
 KERNEL_DIR=$PWD
 ZIMAGE=$KERNEL_DIR/arch/arm/boot/zImage
 MKBOOTIMG=$KERNEL_DIR/tools/mkbootimg
@@ -28,7 +12,10 @@ red='\033[0;31m'
 nocol='\033[0m'
 # Modify the following variable if you want to build
 export ARCH=arm
+export KBUILD_BUILD_USER="kunalkene1797"
+export KBUILD_BUILD_HOST="Perilous-Beast"
 export SUBARCH=arm
+export CROSS_COMPILE=~/arm-eabi-4.7/bin/arm-eabi-
 
 compile_kernel ()
 {
