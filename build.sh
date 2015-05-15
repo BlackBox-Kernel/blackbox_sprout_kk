@@ -23,6 +23,7 @@ echo -e "$blue***********************************************"
 echo "          Compiling BlackBox          "
 echo -e "***********************************************$nocol"
 make sprout_defconfig
+make menuconfig
 make
 if ! [ -a $ZIMAGE ];
 then
