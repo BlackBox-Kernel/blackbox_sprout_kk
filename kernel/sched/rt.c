@@ -1489,7 +1489,7 @@ select_task_rq_rt(struct task_struct *p, int sd_flag, int flags)
 		 * not running a lower priority task.
 		 */
 		if (target != -1 &&
-                    p->prio < cpu_rq(target)->rt.highest_prio.curr)
+		    p->prio < cpu_rq(target)->rt.highest_prio.curr)
 			cpu = target;
 	}
 	rcu_read_unlock();
