@@ -1,0 +1,101 @@
+--- mm/mmap.c
++++ mm/mmap.c
+@@ -67,7 +68,7 @@
+  * MAP_SHARED	r: (no) no	r: (yes) yes	r: (no) yes	r: (no) yes
+  *		w: (no) no	w: (no) no	w: (yes) yes	w: (no) no
+  *		x: (no) no	x: (no) yes	x: (no) yes	x: (yes) yes
+- *		
++ *
+  * MAP_PRIVATE	r: (no) no	r: (yes) yes	r: (no) yes	r: (no) yes
+  *		w: (no) no	w: (no) no	w: (copy) copy	w: (no) no
+  *		x: (no) no	x: (no) yes	x: (no) yes	x: (yes) yes
+@@ -238,6 +239,7 @@
+ 			removed_exe_file_vma(vma->vm_mm);
+ 	}
+ 	mpol_put(vma_policy(vma));
++	uksm_remove_vma(vma);
+ 	kmem_cache_free(vm_area_cachep, vma);
+ 	return next;
+ }
+@@ -531,9 +533,16 @@
+ 	long adjust_next = 0;
+ 	int remove_next = 0;
+ 
++/*
++ * to avoid deadlock, ksm_remove_vma must be done before any spin_lock is
++ * acquired
++ */
++	uksm_remove_vma(vma);
++
+ 	if (next && !insert) {
+ 		struct vm_area_struct *exporter = NULL;
+ 
++		uksm_remove_vma(next);
+ 		if (end >= next->vm_end) {
+ 			/*
+ 			 * vma expands, overlapping all the next, and
+@@ -609,10 +618,10 @@
+ 		if (adjust_next)
+ 			vma_prio_tree_remove(next, root);
+ 	}
+-
+ 	vma->vm_start = start;
+ 	vma->vm_end = end;
+ 	vma->vm_pgoff = pgoff;
++
+ 	if (adjust_next) {
+ 		next->vm_start += adjust_next << PAGE_SHIFT;
+ 		next->vm_pgoff += adjust_next;
+@@ -1412,6 +1429,7 @@
+ 
+ 	vma_link(mm, vma, prev, rb_link, rb_parent);
+ 	file = vma->vm_file;
++	uksm_vma_add_new(vma);
+ 
+ 	/* Once vma denies write, undo our temporary denial count */
+ 	if (correct_wcount)
+@@ -1438,6 +1456,7 @@
+ 	unmap_region(mm, vma, prev, vma->vm_start, vma->vm_end);
+ 	charged = 0;
+ free_vma:
++	uksm_remove_vma(vma);
+ 	kmem_cache_free(vm_area_cachep, vma);
+ unacct_error:
+ 	if (charged)
+@@ -1513,7 +1532,7 @@
+ 		addr = vma->vm_end;
+ 	}
+ }
+-#endif	
++#endif
+ 
+ void arch_unmap_area(struct mm_struct *mm, unsigned long addr)
+ {
+@@ -2269,6 +2290,7 @@
+ 		return error;
+ 
+ 	flags = VM_DATA_DEFAULT_FLAGS | VM_ACCOUNT | mm->def_flags;
++	uksm_vm_flags_mod(&flags);
+ 
+ 	error = get_unmapped_area(NULL, addr, len, 0, MAP_FIXED);
+ 	if (error & ~PAGE_MASK)
+@@ -2337,6 +2359,7 @@
+ 	vma->vm_flags = flags;
+ 	vma->vm_page_prot = vm_get_page_prot(flags);
+ 	vma_link(mm, vma, prev, rb_link, rb_parent);
++	uksm_vma_add_new(vma);
+ out:
+ 	perf_event_mmap(vma);
+ 	mm->total_vm += len >> PAGE_SHIFT;
+@@ -2628,10 +2663,10 @@
+ 	ret = insert_vm_struct(mm, vma);
+ 	if (ret)
+ 		goto out;
+-
+ 	mm->total_vm += len >> PAGE_SHIFT;
+ 
+ 	perf_event_mmap(vma);
++	uksm_vma_add_new(vma);
+ 
+ 	return 0;
+ 

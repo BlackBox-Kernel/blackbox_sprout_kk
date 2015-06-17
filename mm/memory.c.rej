@@ -1,0 +1,77 @@
+--- mm/memory.c
++++ mm/memory.c
+@@ -942,6 +976,11 @@
+ 			rss[MM_ANONPAGES]++;
+ 		else
+ 			rss[MM_FILEPAGES]++;
++
++		/* Should return NULL in vm_normal_page() */
++		uksm_bugon_zeropage(pte);
++	} else {
++		uksm_map_zero_page(pte);
+ 	}
+ 
+ out_set_pte:
+@@ -1177,8 +1216,10 @@
+ 			ptent = ptep_get_and_clear_full(mm, addr, pte,
+ 							tlb->fullmm);
+ 			tlb_remove_tlb_entry(tlb, pte, addr);
+-			if (unlikely(!page))
++			if (unlikely(!page)) {
++				uksm_unmap_zero_page(ptent);
+ 				continue;
++			}
+ 			if (unlikely(details) && details->nonlinear_vma
+ 			    && linear_page_index(details->nonlinear_vma,
+ 						addr) != page->index)
+@@ -1704,7 +1745,7 @@
+ 
+ 	VM_BUG_ON(!!pages != !!(gup_flags & FOLL_GET));
+ 
+-	/* 
++	/*
+ 	 * Require read or write permissions.
+ 	 * If FOLL_FORCE is set, we only require the "MAY" flags.
+ 	 */
+@@ -1751,7 +1792,7 @@
+ 				page = vm_normal_page(vma, start, *pte);
+ 				if (!page) {
+ 					if (!(gup_flags & FOLL_DUMP) &&
+-					     is_zero_pfn(pte_pfn(*pte)))
++					    (is_zero_pfn(pte_pfn(*pte))))
+ 						page = pte_page(*pte);
+ 					else {
+ 						pte_unmap(pte);
+@@ -2563,8 +2604,10 @@
+ 			clear_page(kaddr);
+ 		kunmap_atomic(kaddr);
+ 		flush_dcache_page(dst);
+-	} else
++	} else {
+ 		copy_user_highpage(dst, src, va, vma);
++		uksm_cow_page(vma, src);
++	}
+ }
+ 
+ /*
+@@ -2762,6 +2805,7 @@
+ 		new_page = alloc_zeroed_user_highpage_movable(vma, address);
+ 		if (!new_page)
+ 			goto oom;
++		uksm_cow_pte(vma, orig_pte);
+ 	} else {
+ 		new_page = alloc_page_vma(GFP_HIGHUSER_MOVABLE, vma, address);
+ 		if (!new_page)
+@@ -2783,8 +2827,11 @@
+ 				dec_mm_counter_fast(mm, MM_FILEPAGES);
+ 				inc_mm_counter_fast(mm, MM_ANONPAGES);
+ 			}
+-		} else
++			uksm_bugon_zeropage(orig_pte);
++		} else {
++			uksm_unmap_zero_page(orig_pte);
+ 			inc_mm_counter_fast(mm, MM_ANONPAGES);
++		}
+ 		flush_cache_page(vma, address, pte_pfn(orig_pte));
+ 		entry = mk_pte(new_page, vma->vm_page_prot);
+ 		entry = maybe_mkwrite(pte_mkdirty(entry), vma);
